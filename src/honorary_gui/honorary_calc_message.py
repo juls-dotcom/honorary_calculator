@@ -215,7 +215,7 @@ root.title("Honorary Calculator")
 cal_start_date = Calendar(root, selectmode="day",year=2020, month=6, day=1)
 cal_start_date.grid(row=1,column=0,padx=10,pady=10)
 
-frame_start_hour = LabelFrame(root, text='Start Hour(H:M:S)',padx=10,pady=10)
+frame_start_hour = LabelFrame(root, text='Start Hour(Hour from 0 to 24)',padx=10,pady=10)
 frame_start_hour.grid(row=0,column=0,padx=10,pady=10)
 
 #frame_end_date = LabelFrame(root, text='End Date (Y-M-D)',padx=10,pady=10)
@@ -224,7 +224,7 @@ frame_start_hour.grid(row=0,column=0,padx=10,pady=10)
 cal_end_date = Calendar(root, selectmode="day",year=2020, month=6, day=1)
 cal_end_date.grid(row=1,column=1,padx=10,pady=10)
 
-frame_end_hour = LabelFrame(root, text='End Hour (H:M:S)',padx=10,pady=10)
+frame_end_hour = LabelFrame(root, text='End Hour (Hour from 0 to 24)',padx=10,pady=10)
 frame_end_hour.grid(row=0,column=1,padx=10,pady=10)
 
 #e_start_date = Entry(cal_start_date,width=35,bg="black", fg='white', borderwidth=5)
@@ -238,8 +238,8 @@ e_start_hour.grid(row=1,column=0)
 e_end_hour.grid(row=1,column=1)
 
 def popup():
-    messagebox.showinfo('Honorary Results', calculate_honorary(start_date=str(cal_start_date.get_date()) + ' '+ str(e_start_hour.get()),
-                                                                                                       end_date=str(cal_end_date.get_date()) + ' ' + str(e_end_hour.get()),
+    messagebox.showinfo('Honorary Results', calculate_honorary(start_date=str(cal_start_date.get_date()) + ' '+ str(e_start_hour.get()+':00:00'),
+                                                                                                       end_date=str(cal_end_date.get_date()) + ' ' + str(e_end_hour.get()+':00:00'),
                                                                                                        normal_dict=normal_dict,
                                                                                                        holiday_dict=holiday_dict)
                         )
