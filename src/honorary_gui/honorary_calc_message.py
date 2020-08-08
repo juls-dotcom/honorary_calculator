@@ -21,9 +21,9 @@ s = pd.date_range('2016-12-29', end='2021-01-03', freq=French_BD)
 df = pd.DataFrame(s, columns=['Date'])
 
 # Define fares depending on day time
-normal_dict = {'day_first_hour_fare':'40',
+normal_dict = {'day_first_hour_fare':'42',
            'night_first_hour_fare':'49.50',
-           'day_subsequent_hour_fare': '32',
+           'day_subsequent_hour_fare': '30',
            'night_subsequent_hour_fare': '37.50'
           }
 
@@ -50,8 +50,8 @@ def calculate_honorary(start_date, end_date, normal_dict, holiday_dict):
     night is between 2200 and 0700
 
     normal day fare:
-     * first hour = 40 euros
-     * subsequent hour = 32 euros
+     * first hour = 42 euros
+     * subsequent hour = 30 euros
 
     normal night fare
      * first hour = 49.50 euros
@@ -83,60 +83,122 @@ def calculate_honorary(start_date, end_date, normal_dict, holiday_dict):
 
     # Get actual hours relative to the day
     worked_hours = pd.Series(pd.date_range(start_date, end_date, freq='H').hour)
+    worked_dates = pd.Series(pd.date_range(start_date, end_date, freq='H').date)
 
     # Get whether these hours were day or night shift
-    bins = [0, 7, 22]  # Day is defined between 0700 and 2200
-    labels = ['Night', 'Day']
-    shift = pd.cut(worked_hours, bins=bins, labels=labels, include_lowest=True).replace('Night1', 'Night')
-    hours_per_shift = pd.DataFrame(pd.concat([worked_hours, shift], axis=1)).groupby(1).count()
+    ## Day is defined between 0700 and 2200
+    bins = [0, 7, 22, 24]
+    # I add a third night label that I rename later on. Suboptimal
+    labels = ['Night', 'Day', 'Night1']
+    # Compute shifts
+    shift = pd.cut(worked_hours[1:], bins=bins, labels=labels, include_lowest=True, right=True).replace('Night1',
+                                                                                                        'Night')
+    # Concatenate data
+    hours_per_shift = (pd
+                       .DataFrame(pd.concat([worked_dates, worked_hours, shift], axis=1))
+                       .rename(columns={0: 'date', 1: 'hour', 2: 'shifts'}))
+    # Shift the shifts column to get correct number of hours per shift per day
+    hours_per_shift.shifts = hours_per_shift.shifts.shift(-1)
+    # Groupby and count the number of hours
+    # Fill NaN with 0 hours worked
+    hours_per_shift = hours_per_shift.groupby(['date', 'shifts']).count().fillna(0)
     print(hours_per_shift)
-
+    print(' ')
     # Verify whether start date is holiday
     if (df.Date.astype(str).str.contains(start_date.strftime('%Y-%m-%d')).sum()) > 0:
         # Day in calendar, so not holiday
         start_holiday = False
-        fare_dict = normal_dict
+        fare_dict_start = normal_dict
         start_date_mess = 'Start date is business day.'
         print(start_date_mess)
     else:
         # Day not in calendar, so holiday
         start_holiday = True
-        fare_dict = holiday_dict
+        fare_dict_start = holiday_dict
         start_date_mess = 'Start date is weekend or holiday'
         print(start_date_mess)
     if df.Date.astype(str).str.contains(end_date.strftime('%Y-%m-%d')).sum() > 0:
         # Day in calendar, so not holiday
         end_holiday = False
-        fare_dict = normal_dict
-        end_date_mess = 'End date is business day'
+        fare_dict_end = normal_dict
+        end_date_mess = 'End date is business day.'
         print(end_date_mess)
     else:
         # Day not in calendar, so holiday
         end_holiday = True
-        fare_dict = holiday_dict
-        end_date_mess = 'End date is weekend or holiday'
+        fare_dict_end = holiday_dict
+        end_date_mess = 'End date is weekend or holiday.'
         print(end_date_mess)
 
-    honorary_night = ((hours_per_shift.T.Night.values - 1) * float(normal_dict.get("night_subsequent_hour_fare"))
-                      + float(normal_dict.get("night_first_hour_fare"))
-                      )
+    # Calculate fee
 
-    honorary_day = ((hours_per_shift.T.Day.values - 1) * int(normal_dict.get("day_subsequent_hour_fare"))
-                    + int(normal_dict.get("day_first_hour_fare"))
-                    )
+    print('')
 
-    honorary_total = int(honorary_day + honorary_night)
+    if start_date.date() == end_date.date():  # if mission was on one day only
+        print('Mission was on one single day')
+        # Set end date as no gain
+        honorary_end_date = 0
+        # Get first day data
+        day_one = hours_per_shift.reset_index().loc[hours_per_shift.reset_index()['date'] == start_date]
+        if shift.iloc[0] == 'Day':
+            honorary_start_date = (float(fare_dict_start.get("day_first_hour_fare"))
+                                   + float((day_one.loc[day_one.shifts == 'Day'].hour - 1)
+                                           * float(fare_dict_start.get("day_subsequent_hour_fare")))
+                                   + float((day_one.loc[day_one.shifts == 'Night'].hour)
+                                           * float(fare_dict_start.get("night_subsequent_hour_fare"))))
+        else:
+            honorary_start_date = (float(fare_dict.get("night_first_hour_fare"))
+                                   + float((day_one.loc[day_one.shifts == 'Night'].hour - 1)
+                                           * float(fare_dict_start.get("night_subsequent_hour_fare")))
+                                   + float((day_one.loc[day_one.shifts == 'Day'].hour)
+                                           * float(fare_dict_start.get("day_subsequent_hour_fare"))))
+
+    else:  # if mission was on two consecutive days
+        print('Mission was on two consecutive days')
+        print('')
+        day_one = hours_per_shift.reset_index().loc[hours_per_shift.reset_index()['date'] == start_date]
+        day_two = hours_per_shift.reset_index().loc[hours_per_shift.reset_index()['date'] == end_date]
+        if shift.iloc[0] == 'Day':
+            print('First hour is day shift')
+            # Honorary Start Date
+            honorary_start_date = (float(fare_dict_start.get("day_first_hour_fare"))
+                                   + float((day_one.loc[day_one.shifts == 'Day'].hour - 1)
+                                           * float(fare_dict_start.get("day_subsequent_hour_fare")))
+                                   + float((day_one.loc[day_one.shifts == 'Night'].hour)
+                                           * float(fare_dict_start.get("night_subsequent_hour_fare"))))
+            # Honorary End Date
+            honorary_end_date = (
+                    + float((day_two.loc[day_two.shifts == 'Night'].hour)
+                            * float(fare_dict_end.get("night_subsequent_hour_fare")))
+                    + float((day_two.loc[day_two.shifts == 'Day'].hour)
+                            * float(fare_dict_end.get("day_subsequent_hour_fare"))))
+        else:
+            print('First hour isnight shift')
+            # Honorary Start Date
+            honorary_start_date = (float(fare_dict_start.get("night_first_hour_fare"))
+                                   + float((day_one.loc[day_one.shifts == 'Night'].hour - 1)
+                                           * float(fare_dict_start.get("night_subsequent_hour_fare")))
+                                   + float((day_one.loc[day_one.shifts == 'Day'].hour)
+                                           * float(fare_dict_start.get("day_subsequent_hour_fare"))))
+            # Honorary End Date
+            honorary_end_date = (
+                    + float((day_two.loc[day_two.shifts == 'Night'].hour)
+                            * float(fare_dict_end.get("night_subsequent_hour_fare")))
+                    + float((day_two.loc[day_two.shifts == 'Day'].hour)
+                            * float(fare_dict_end.get("day_subsequent_hour_fare"))))
+
+    honorary_total = int(honorary_start_date + honorary_end_date)
 
     print(' ')
     honorary_mess = 'You are owed ' + str(honorary_total) + ' euros.'
     print(honorary_mess)
 
     return ('Start date: ' + str(start_date) + '          '
-           + 'End date: ' + str(end_date) + '          '
-           +  start_date_mess + '               '
-           + end_date_mess+ '                   '
-           + main_mess + '                    '
-           + honorary_mess)
+            + 'End date: ' + str(end_date) + '          '
+            + start_date_mess + '               '
+            + end_date_mess + '                   '
+            + main_mess + '                    '
+            + honorary_mess)
 
 # Output actual GUI
 
