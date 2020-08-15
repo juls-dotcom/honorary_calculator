@@ -3,17 +3,13 @@ honorary_gui
 ============
 
 
-Add a short description here!
+This repository hosts un bunch of test .py files that I came up with when developing a salary calculator for my mom.
 
 
 Description
 ===========
+The final file, honorary_calc_message_check.py (all files in //src folder) is the first output of this project, and when called, outputs a GUI that allows the user to enter start and end dates of missions, as well as start and end hours. 
+Salary is at the moment based on french calendar with particular fees per hour. 
 
-A longer description of your project goes here...
+I will add more calendars in the future, and allow the user to define the fees to be paid be hour.
 
-
-Note
-====
-
-This project has been set up using PyScaffold 3.2.3. For details and usage
-information on PyScaffold see https://pyscaffold.org/.
