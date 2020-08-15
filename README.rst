@@ -12,12 +12,12 @@ The final file, honorary_calc_message_check.py (all files in //src folder) is th
 
 The code is very basic. 
 
-1) It first calculates the number of hours worked.
+1)It first calculates the number of hours worked.
 
-2) It then looks at the number of hours per day and per night.
+2)It then looks at the number of hours per day and per night.
 Night and day is at the moment hard-wired, with days ranging between 0700 and 2200.
 
-3) It then look at whether the dates (start and end if different) are regular business days or weekend/holidays. 
+3)It then look at whether the dates (start and end if different) are regular business days or weekend/holidays. 
 This is based at the moment on French Calendar.
 
 It then adds up the fees per hour and output it in a simple message box.
